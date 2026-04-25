@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IPL Stats API</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue: #1a237e;
+      --gold: #ffb300;
+      --gold-light: #ffe082;
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --surface2: #1f1f1f;
+      --border: rgba(255,179,0,0.15);
+      --text: #f0f0f0;
+      --muted: #888;
+      --green: #00e676;
+      --red: #ff5252;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1.2rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      color: var(--gold);
+      letter-spacing: 2px;
+    }
+    .logo span { color: var(--text); }
+    .badge {
+      background: var(--gold);
+      color: #000;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 1px;
+    }
+
+    /* MAIN LAYOUT */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* TABS */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    .tab {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 10px 22px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .tab:hover { border-color: var(--gold); color: var(--gold); }
+    .tab.active {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #000;
+      font-weight: 600;
+    }
+
+    /* PANELS */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* SEARCH BOX */
+    .search-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .search-box h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.4rem;
+      color: var(--gold);
+      letter-spacing: 1px;
+      margin-bottom: 1rem;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .input-row input, .input-row select {
+      flex: 1;
+      min-width: 180px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border 0.2s;
+    }
+    .input-row input:focus, .input-row select:focus {
+      border-color: var(--gold);
+    }
+    .input-row select option { background: #1f1f1f; }
+    .btn {
+      background: var(--gold);
+      color: #000;
+      border: none;
+      padding: 10px 28px;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* RESULT AREA */
+    .result-area {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      min-height: 120px;
+    }
+    .placeholder {
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+      padding: 2rem;
+    }
+    .loading {
+      color: var(--gold);
+      font-size: 14px;
+      text-align: center;
+      padding: 2rem;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .error-msg {
+      color: var(--red);
+      font-size: 14px;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    /* STATS GRID */
+    .section-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.1rem;
+      color: var(--gold);
+      letter-spacing: 1px;
+      margin: 1.2rem 0 0.8rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+      margin-bottom: 1rem;
+    }
+    .stat-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-card .val {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.6rem;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .stat-card .lbl {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* TEAMS TABLE */
+    .teams-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+    }
+    .team-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .team-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      flex-shrink: 0;
+    }
+
+    /* AGAINST TABLE */
+    .against-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 0.5rem;
+    }
+    .against-table th {
+      background: var(--surface2);
+      color: var(--gold);
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .against-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    .against-table tr:hover td { background: var(--surface2); }
+    .win { color: var(--green); font-weight: 600; }
+    .loss { color: var(--red); }
+
+    /* API ENDPOINTS */
+    .endpoint-list { display: flex; flex-direction: column; gap: 10px; }
+    .endpoint-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .method {
+      background: var(--gold);
+      color: #000;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .endpoint-info .path {
+      font-family: var(--font-mono, monospace);
+      font-size: 13px;
+      color: var(--gold-light);
+      margin-bottom: 4px;
+    }
+    .endpoint-info .desc {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* PLAYER NAME TITLE */
+    .player-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      color: var(--text);
+      letter-spacing: 2px;
+      margin-bottom: 0.2rem;
+    }
+    .player-title span { color: var(--gold); }
+
+    @media (max-width: 600px) {
+      header { padding: 1rem; }
+      .logo { font-size: 1.5rem; }
+      .container { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">IPL <span>Stats</span></div>
+  <div class="badge">REST API</div>
+</header>
+
+<div class="container">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('teams')">🏏 All Teams</button>
+    <button class="tab" onclick="switchTab('team-record')">📊 Team Record</button>
+    <button class="tab" onclick="switchTab('h2h')">⚔️ Head to Head</button>
+    <button class="tab" onclick="switchTab('batting')">🏏 Batting</button>
+    <button class="tab" onclick="switchTab('bowling')">🎯 Bowling</button>
+    <button class="tab" onclick="switchTab('api')">📡 API Docs</button>
+  </div>
+
+  <!-- ALL TEAMS -->
+  <div class="panel active" id="panel-teams">
+    <div class="search-box">
+      <h2>All IPL Teams</h2>
+      <div class="input-row">
+        <button class="btn" onclick="fetchTeams()">Load Teams</button>
+      </div>
+    </div>
+    <div class="result-area" id="result-teams">
+      <p class="placeholder">Click "Load Teams" to see all IPL teams</p>
+    </div>
+  </div>
+
+  <!-- TEAM RECORD -->
+  <div class="panel" id="panel-team-record">
+    <div class="search-box">
+      <h2>Team Overall Record</h2>
+      <div class="input-row">
+        <input type="text" id="input-team" placeholder="e.g. Mumbai Indians" />
+        <button class="btn" onclick="fetchTeamRecord()">Get Record</button>
+      </div>
+    </div>
+    <div class="result-area" id="result-team-record">
+      <p class="placeholder">Enter team name and click "Get Record"</p>
+    </div>
+  </div>
+
+  <!-- HEAD TO HEAD -->
+  <div class="panel" id="panel-h2h">
+    <div class="search-box">
+      <h2>Head to Head</h2>
+      <div class="input-row">
+        <input type="text" id="input-team1" placeholder="Team 1 e.g. Mumbai Indians" />
+        <input type="text" id="input-team2" placeholder="Team 2 e.g. Chennai Super Kings" />
+        <button class="btn" onclick="fetchH2H()">Compare</button>
+      </div>
+    </div>
+    <div class="result-area" id="result-h2h">
+      <p class="placeholder">Enter two team names to compare</p>
+    </div>
+  </div>
+
+  <!-- BATTING -->
+  <div class="panel" id="panel-batting">
+    <div class="search-box">
+      <h2>Batting Stats</h2>
+      <div class="input-row">
+        <input type="text" id="input-batsman" placeholder="e.g. RG Sharma" />
+        <button class="btn" onclick="fetchBatting()">Get Stats</button>
+      </div>
+    </div>
+    <div class="result-area" id="result-batting">
+      <p class="placeholder">Enter batsman name and click "Get Stats"</p>
+    </div>
+  </div>
+
+  <!-- BOWLING -->
+  <div class="panel" id="panel-bowling">
+    <div class="search-box">
+      <h2>Bowling Stats</h2>
+      <div class="input-row">
+        <input type="text" id="input-bowler" placeholder="e.g. JJ Bumrah" />
+        <button class="btn" onclick="fetchBowling()">Get Stats</button>
+      </div>
+    </div>
+    <div class="result-area" id="result-bowling">
+      <p class="placeholder">Enter bowler name and click "Get Stats"</p>
+    </div>
+  </div>
+
+  <!-- API DOCS -->
+  <div class="panel" id="panel-api">
+    <div class="search-box">
+      <h2>API Endpoints</h2>
+      <p style="font-size:13px;color:var(--muted);">Base URL: <code style="color:var(--gold-light)">http://127.0.0.1:5000</code></p>
+    </div>
+    <div class="result-area">
+      <div class="endpoint-list">
+        <div class="endpoint-card">
+          <span class="method">GET</span>
+          <div class="endpoint-info">
+            <div class="path">/api/teams</div>
+            <div class="desc">Returns list of all IPL teams</div>
+          </div>
+        </div>
+        <div class="endpoint-card">
+          <span class="method">GET</span>
+          <div class="endpoint-info">
+            <div class="path">/api/team-record?team=Mumbai Indians</div>
+            <div class="desc">Overall record of a team — wins, losses, titles</div>
+          </div>
+        </div>
+        <div class="endpoint-card">
+          <span class="method">GET</span>
+          <div class="endpoint-info">
+            <div class="path">/api/teamVteam?team1=MI&team2=CSK</div>
+            <div class="desc">Head to head record between two teams</div>
+          </div>
+        </div>
+        <div class="endpoint-card">
+          <span class="method">GET</span>
+          <div class="endpoint-info">
+            <div class="path">/api/batting-record?batsman-name=RG Sharma</div>
+            <div class="desc">Batting stats — runs, average, strike rate, 50s, 100s</div>
+          </div>
+        </div>
+        <div class="endpoint-card">
+          <span class="method">GET</span>
+          <div class="endpoint-info">
+            <div class="path">/api/bowling-record?bowler-name=JJ Bumrah</div>
+            <div class="desc">Bowling stats — wickets, economy, average, best figure</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const BASE = 'http://127.0.0.1:5000';
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('panel-' + name).classList.add('active');
+  }
+
+  function setLoading(id) {
+    document.getElementById(id).innerHTML = '<p class="loading">Loading...</p>';
+  }
+  function setError(id, msg) {
+    document.getElementById(id).innerHTML = `<p class="error-msg">${msg}</p>`;
+  }
+
+  function statCard(val, label) {
+    return `<div class="stat-card"><div class="val">${val ?? '-'}</div><div class="lbl">${label}</div></div>`;
+  }
+
+  // FETCH TEAMS
+  async function fetchTeams() {
+    setLoading('result-teams');
+    try {
+      const res = await fetch(`${BASE}/api/teams`);
+      const data = await res.json();
+      const teams = Array.isArray(data) ? data : Object.values(data).flat();
+      const html = `<div class="teams-grid">${teams.map(t => `
+        <div class="team-card"><div class="team-dot"></div>${t}</div>`).join('')}
+      </div>`;
+      document.getElementById('result-teams').innerHTML = html;
+    } catch(e) {
+      setError('result-teams', 'Could not connect to API. Make sure Flask server is running on port 5000.');
+    }
+  }
+
+  // FETCH TEAM RECORD
+  async function fetchTeamRecord() {
+    const team = document.getElementById('input-team').value.trim();
+    if (!team) return alert('Please enter a team name');
+    setLoading('result-team-record');
+    try {
+      const res = await fetch(`${BASE}/api/team-record?team=${encodeURIComponent(team)}`);
+      const raw = await res.json();
+      const data = raw[team] || raw[Object.keys(raw)[0]];
+      const ov = data.overall;
+      let html = `
+        <div class="player-title">${team}</div>
+        <div class="section-title">Overall Record</div>
+        <div class="stats-grid">
+          ${statCard(ov.matchesplayed, 'Matches')}
+          ${statCard(ov.won, 'Won')}
+          ${statCard(ov.loss, 'Lost')}
+          ${statCard(ov.noResult, 'No Result')}
+          ${statCard(ov.title, 'Titles')}
+        </div>
+        <div class="section-title">Record vs Each Team</div>
+        <table class="against-table">
+          <thead><tr><th>Opponent</th><th>Played</th><th>Won</th><th>Lost</th></tr></thead>
+          <tbody>
+            ${Object.entries(data.against).map(([opp, r]) => `
+              <tr>
+                <td>${opp}</td>
+                <td>${r.matchesplayed}</td>
+                <td class="win">${r.won}</td>
+                <td class="loss">${r.loss}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+      document.getElementById('result-team-record').innerHTML = html;
+    } catch(e) {
+      setError('result-team-record', 'Error fetching data. Check team name and server.');
+    }
+  }
+
+  // FETCH H2H
+ async function fetchH2H() {
+    const t1 = document.getElementById('input-team1').value.trim();
+    const t2 = document.getElementById('input-team2').value.trim();
+    if (!t1 || !t2) return alert('Please enter both team names');
+    setLoading('result-h2h');
+    try {
+      const res = await fetch(`${BASE}/api/teamVteam?team1=${encodeURIComponent(t1)}&team2=${encodeURIComponent(t2)}`);
+      const data = await res.json();
+      const html = `
+        <div class="player-title">${t1} <span>vs</span> ${t2}</div>
+        <div class="section-title">Head to Head</div>
+        <div class="stats-grid">
+          ${statCard(data.total_matches, 'Matches')}
+          ${statCard(data[t1], `${t1} Won`)}
+          ${statCard(data[t2], `${t2} Won`)}
+          ${statCard(data.draws, 'Draws')}
+        </div>`;
+      document.getElementById('result-h2h').innerHTML = html;
+    } catch(e) {
+      setError('result-h2h', 'Error fetching data. Check team names and server.');
+    }
+  }
+
+  // FETCH BATTING
+  async function fetchBatting() {
+    const name = document.getElementById('input-batsman').value.trim();
+    if (!name) return alert('Please enter batsman name');
+    setLoading('result-batting');
+    try {
+      const res = await fetch(`${BASE}/api/batting-record?batsman=${encodeURIComponent(name)}`);
+      const raw = await res.json();
+      const data = raw[name] || raw[Object.keys(raw)[0]];
+      const a = data.all;
+      let html = `
+        <div class="player-title">${name}</div>
+        <div class="section-title">Overall Batting</div>
+        <div class="stats-grid">
+          ${statCard(a.innings, 'Innings')}
+          ${statCard(a.runs, 'Runs')}
+          ${statCard(a.highestScore, 'Highest')}
+          ${statCard(a.avg?.toFixed(1), 'Average')}
+          ${statCard(a.strikeRate?.toFixed(1), 'Strike Rate')}
+          ${statCard(a.fifties, '50s')}
+          ${statCard(a.hundreds, '100s')}
+          ${statCard(a.fours, 'Fours')}
+          ${statCard(a.sixes, 'Sixes')}
+          ${statCard(a.notOut, 'Not Out')}
+          ${statCard(a.mom, 'MOM')}
+        </div>
+        <div class="section-title">vs Each Team</div>
+        <table class="against-table">
+          <thead><tr><th>Team</th><th>Inn</th><th>Runs</th><th>HS</th><th>Avg</th><th>SR</th><th>50s</th><th>100s</th></tr></thead>
+          <tbody>
+            ${Object.entries(data.against).filter(([,r]) => r && r.innings > 0).map(([team, r]) => `
+              <tr>
+                <td>${team}</td>
+                <td>${r.innings}</td>
+                <td class="win">${r.runs}</td>
+                <td>${r.highestScore}</td>
+                <td>${isFinite(r.avg) ? r.avg?.toFixed(1) : '∞'}</td>
+                <td>${r.strikeRate?.toFixed(1)}</td>
+                <td>${r.fifties}</td>
+                <td>${r.hundreds}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+      document.getElementById('result-batting').innerHTML = html;
+    } catch(e) {
+      setError('result-batting', 'Error fetching data. Check batsman name and server.');
+    }
+  }
+
+  // FETCH BOWLING
+  async function fetchBowling() {
+    const name = document.getElementById('input-bowler').value.trim();
+    if (!name) return alert('Please enter bowler name');
+    setLoading('result-bowling');
+    try {
+      const res = await fetch(`${BASE}/api/bowling-record?bowler=${encodeURIComponent(name)}`);
+      const raw = await res.json();
+      const data = raw[name] || raw[Object.keys(raw)[0]];
+      const a = data.all;
+      let html = `
+        <div class="player-title">${name}</div>
+        <div class="section-title">Overall Bowling</div>
+        <div class="stats-grid">
+          ${statCard(a.innings, 'Innings')}
+          ${statCard(a.wicket, 'Wickets')}
+          ${statCard(a.economy?.toFixed(2), 'Economy')}
+          ${statCard(isFinite(a.average) ? a.average?.toFixed(1) : '∞', 'Average')}
+          ${statCard(isFinite(a.strikeRate) ? a.strikeRate?.toFixed(1) : '∞', 'Strike Rate')}
+          ${statCard(a.best_figure, 'Best')}
+          ${statCard(a['3+W'], '3+ Wickets')}
+          ${statCard(a.mom, 'MOM')}
+        </div>
+        <div class="section-title">vs Each Team</div>
+        <table class="against-table">
+          <thead><tr><th>Team</th><th>Inn</th><th>Wkts</th><th>Eco</th><th>Avg</th><th>Best</th></tr></thead>
+          <tbody>
+            ${Object.entries(data.against).filter(([,r]) => r && r.innings > 0).map(([team, r]) => `
+              <tr>
+                <td>${team}</td>
+                <td>${r.innings}</td>
+                <td class="win">${r.wicket}</td>
+                <td>${r.economy?.toFixed(2)}</td>
+                <td>${isFinite(r.average) ? r.average?.toFixed(1) : '∞'}</td>
+                <td>${r.best_figure ?? '-'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+      document.getElementById('result-bowling').innerHTML = html;
+    } catch(e) {
+      setError('result-bowling', 'Error fetching data. Check bowler name and server.');
+    }
+  }
+</script>
+</body>
+</html>
